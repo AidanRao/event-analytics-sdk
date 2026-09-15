@@ -1,0 +1,6 @@
+{
+  "name": "event-analytics-web-example",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "node server.mjs" }
+}

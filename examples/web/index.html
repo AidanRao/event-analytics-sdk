@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Event Analytics SDK 示例</title>
+<style>body{font:16px system-ui;max-width:780px;margin:48px auto;padding:0 24px;color:#172033;background:#f6f8fb}label{display:block;margin:16px 0}input{display:block;width:95%;padding:10px;margin-top:6px}button{padding:10px 16px;margin:6px 4px 6px 0;cursor:pointer}pre{white-space:pre-wrap;background:white;padding:20px;border:1px solid #d9e0eb;min-height:120px}small{color:#526174}</style>
+<h1>Event Analytics SDK</h1><p>手动埋点与身份切换示例。事件仅保存在内存中。</p>
+<label>采集 URL<input id="endpoint" value="http://127.0.0.1:8788/v1/events"></label>
+<label>应用 ID<input id="app" value="demo"></label>
+<button id="initialize">初始化</button><button id="login" disabled>设置用户 A</button><button id="logout" disabled>清除身份</button><button id="track" disabled>记录按钮点击</button><button id="flush" disabled>立即发送</button><button id="close" disabled>关闭</button>
+<p><small>页面隐藏时尝试发送；服务端须允许来源 http://127.0.0.1:5173。</small></p>
+<pre id="output" aria-live="polite">等待初始化。</pre>
+<script type="module">
+import { Analytics } from './node_modules/@aidanrao/event-analytics/dist/index.js';
+let sdk;
+const output = document.querySelector('#output');
+const log = value => { output.textContent += '\n' + JSON.stringify(value); };
+const active = value => { for (const id of ['login','logout','track','flush','close']) document.getElementById(id).disabled = !value; document.getElementById('initialize').disabled = value; };
+document.getElementById('initialize').onclick = () => {
+  try { sdk = new Analytics({ endpoint: document.getElementById('endpoint').value, appId: document.getElementById('app').value, appVersion: '1.0.0', onError: log }); active(true); log('已初始化'); }
+  catch (error) { log(error.message); }
+};
+document.getElementById('login').onclick = () => { sdk.setIdentity({ user_id: 'user-A' }); log('用户 A'); };
+document.getElementById('logout').onclick = () => { sdk.setIdentity({}); log('身份已清除'); };
+document.getElementById('track').onclick = () => { try { log({ event_id: sdk.track('button_clicked', { source: 'web-example' }) }); } catch (error) { log(error.message); } };
+document.getElementById('flush').onclick = async () => log(await sdk.flush());
+document.getElementById('close').onclick = async () => { active(false); document.getElementById('initialize').disabled = true; log(await sdk.close()); document.getElementById('initialize').disabled = false; };
+</script>
+</html>

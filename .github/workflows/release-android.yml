@@ -1,0 +1,38 @@
+name: Release Android
+on:
+  push:
+    tags: ['android/v*']
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: maven-central
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Verify version
+        run: test "$GITHUB_REF_NAME" = "android/v$(sed -n 's/^VERSION_NAME=//p' gradle.properties)"
+      - run: ./gradlew :sdk:testDebugUnitTest :sdk:lint :sdk:assembleRelease :sdk:publishToMavenLocal
+      - name: Verify consumer compilation
+        working-directory: examples/android
+        run: ../../android/gradlew :app:assembleDebug -PsdkVersion="$(sed -n 's/^VERSION_NAME=//p' ../../android/gradle.properties)"
+      - name: Publish signed release
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_IN_MEMORY_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_IN_MEMORY_KEY_PASSWORD }}
+        run: |
+          test -n "$ORG_GRADLE_PROJECT_mavenCentralUsername"
+          test -n "$ORG_GRADLE_PROJECT_mavenCentralPassword"
+          test -n "$ORG_GRADLE_PROJECT_signingInMemoryKey"
+          ./gradlew :sdk:publishAndReleaseToMavenCentral

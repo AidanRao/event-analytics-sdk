@@ -1,0 +1,41 @@
+{
+  "name": "@aidanrao/event-analytics",
+  "version": "0.1.0",
+  "description": "Browser SDK for Event Analytics protocol v1",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AidanRao/event-analytics-sdk.git",
+    "directory": "javascript"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepack": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "ajv": "^8.17.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
+  }
+}

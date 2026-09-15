@@ -1,0 +1,30 @@
+name: Release JavaScript
+on:
+  push:
+    tags: ['javascript/v*']
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: javascript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+          cache: npm
+          cache-dependency-path: javascript/package-lock.json
+      - name: Verify version
+        run: node -e 'const p=JSON.parse(require("fs").readFileSync("package.json")); if(process.env.GITHUB_REF_NAME!==`javascript/v${p.version}`) process.exit(1)'
+      - run: npm ci
+      - run: npm run typecheck && npm test && npm run build
+      - run: npm pack --dry-run
+      - run: npm publish --access public

@@ -1,0 +1,31 @@
+name: JavaScript CI
+on:
+  pull_request:
+    paths: ['javascript/**', 'spec/**', 'examples/web/**', '.github/workflows/ci-js.yml']
+  push:
+    branches: [main]
+    paths: ['javascript/**', 'spec/**', 'examples/web/**', '.github/workflows/ci-js.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: javascript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: javascript/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck && npm test && npm run build
+      - run: npm pack
+      - run: npm install --no-save --package-lock=false ../../javascript/*.tgz
+        working-directory: examples/web
+      - uses: actions/upload-artifact@v4
+        with:
+          name: javascript-package
+          path: javascript/*.tgz
