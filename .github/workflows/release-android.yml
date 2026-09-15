@@ -18,6 +18,9 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          # Override the default list, which includes the unavailable legacy tools package.
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
       - uses: gradle/actions/setup-gradle@v4
       - name: Verify version
         run: test "$GITHUB_REF_NAME" = "android/v$(sed -n 's/^VERSION_NAME=//p' gradle.properties)"
