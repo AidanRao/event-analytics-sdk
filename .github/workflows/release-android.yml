@@ -24,7 +24,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Verify version
         run: test "$GITHUB_REF_NAME" = "android/v$(sed -n 's/^VERSION_NAME=//p' gradle.properties)"
-      - run: ./gradlew :sdk:testDebugUnitTest :sdk:lint :sdk:assembleRelease :sdk:publishToMavenLocal
+      - run: ./gradlew testDebugUnitTest lint assembleRelease publishToMavenLocal
       - name: Verify consumer compilation
         working-directory: examples/android
         run: ../../android/gradlew :app:assembleDebug -PsdkVersion="$(sed -n 's/^VERSION_NAME=//p' ../../android/gradle.properties)"
@@ -38,4 +38,4 @@ jobs:
           test -n "$ORG_GRADLE_PROJECT_mavenCentralUsername"
           test -n "$ORG_GRADLE_PROJECT_mavenCentralPassword"
           test -n "$ORG_GRADLE_PROJECT_signingInMemoryKey"
-          ./gradlew :sdk:publishAndReleaseToMavenCentral
+          ./gradlew publishAndReleaseToMavenCentral

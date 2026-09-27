@@ -118,4 +118,45 @@ class EngineTest {
         val sdk = client(Config(server.url("/").newBuilder().host("127.0.0.1").build().toString(), timeoutMs = 500, maxRetries = 1, retryBaseMs = 1))
         sdk.track("one", emptyMap()); assertEquals(FlushResult(0, 1), flush(sdk)); assertEquals(2, server.requestCount)
     }
+    @Test fun replayKeepsOriginalIdentityVersionTimestampAndId() {
+        server.enqueue(MockResponse().setResponseCode(202))
+        val sdk = client()
+        val record = CrashRecord.capture(context + ("app_version" to "old"), mapOf("user_id" to "old-user"), "crash", "home", Thread.currentThread(), RuntimeException(), 1234L)!!
+        sdk.setIdentity(mapOf("user_id" to "new-user"))
+        val done = sdk.replay(record)
+        flush(sdk)
+        assertTrue(done.get(2, TimeUnit.SECONDS))
+        val sent = body()
+        assertEquals("old", (sent["context"] as Map<*, *>)["app_version"])
+        assertEquals("old-user", (sent["identity"] as Map<*, *>)["user_id"])
+        val event = (sent["events"] as List<*>).single() as Map<*, *>
+        assertEquals(record.event["event_id"], event["event_id"])
+        assertEquals(1234.0, event["local_time_ms"])
+    }
+    @Test fun asynchronousSystemDefaultsPreservePerEventOverridesAndIdentity() {
+        server.enqueue(MockResponse().setResponseCode(202))
+        server.enqueue(MockResponse().setResponseCode(202))
+        val gate = java.util.concurrent.CountDownLatch(1)
+        val engine = Engine(Config(server.url("/").toString()), context, contextInitializer = {
+            gate.await(3, TimeUnit.SECONDS)
+            mapOf("os_name" to "ColorOS", "os_version" to "14", "android_version" to "14")
+        }, initialOverrideKeys = setOf("app_id", "app_version", "platform")).also { clients.add(it) }
+        engine.setIdentity(mapOf("user" to "first")); engine.track("first", emptyMap())
+        engine.setContext(mapOf("os_name" to "CustomOS", "os_version" to "2"))
+        engine.setIdentity(mapOf("user" to "second")); engine.track("second", emptyMap())
+        gate.countDown()
+        assertEquals(FlushResult(2, 0), flush(engine))
+        val first = body(); val second = body()
+        assertEquals("ColorOS", (first["context"] as Map<*, *>)["os_name"])
+        assertEquals("first", (first["identity"] as Map<*, *>)["user"])
+        assertEquals("CustomOS", (second["context"] as Map<*, *>)["os_name"])
+        assertEquals("2", (second["context"] as Map<*, *>)["os_version"])
+    }
+    @Test fun osNameOverrideNeverRetainsUnrelatedDetectedVersion() {
+        val engine = client()
+        engine.setContext(mapOf("os_name" to "ColorOS", "os_version" to "14"))
+        engine.setContext(mapOf("os_name" to "CustomOS"))
+        assertFalse(engine.captureContext().first.containsKey("os_version"))
+        assertEquals("host_override", engine.captureContext().first["os_detection_source"])
+    }
 }

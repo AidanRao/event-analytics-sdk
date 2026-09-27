@@ -11,6 +11,8 @@ android {
     kotlinOptions { jvmTarget = "1.8" }
 }
 dependencies {
+    implementation("top.aidanrao:event-analytics-navigation:${providers.gradleProperty("sdkVersion").getOrElse("0.2.0")}")
+    implementation("top.aidanrao:event-analytics-fragment:${providers.gradleProperty("sdkVersion").getOrElse("0.2.0")}")
     androidTestImplementation("androidx.test:runner:1.5.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
-    implementation("top.aidanrao:event-analytics:${providers.gradleProperty("sdkVersion").getOrElse("0.1.0")}") }
+    implementation("top.aidanrao:event-analytics:${providers.gradleProperty("sdkVersion").getOrElse("0.2.0")}") }

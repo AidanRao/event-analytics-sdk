@@ -1,5 +1,27 @@
 # 验证记录
 
+## Android 0.2.0 — 2026-09-27
+
+本轮完成 Android SDK 自动采集与系统信息升级，分支 codex/android-auto-tracking。只发布到本机 Maven Local，未发布 Maven Central、未推送；ClassHopper 应用仓库未修改。
+
+| 检查 | 结果 |
+| --- | --- |
+| 核心协议/队列、系统识别、生命周期、crash 持久化与重放 | 36 项通过 |
+| Navigation 页面状态与真实 NavController 生命周期 | 4 项通过 |
+| Fragment 页面状态、隐藏祖先、窗口附着和前后台 | 3 项通过 |
+| 三模块 lint | 0 errors；保留兼容 compileSdk 34 的依赖版本，有依赖升级提示 |
+| 三模块 Release AAR、sources、文档、本地 Maven POM/metadata | 构建通过；适配器 POM 指向核心 0.2.0 |
+| 示例 Kotlin/Java 与 instrumentation APK 编译 | 通过，消费三个 Maven Local AAR |
+| git diff --check | 通过 |
+
+生命周期集成测试使用 Robolectric API 28 与 MockWebServer，覆盖导航返回/重建、Fragment show/hide、窗口附着、前后台重复回调；进程主/子进程测试按 Android Application.getProcessName 设置测试运行时。crash 测试验证异常处理器链、崩溃时不联网、原 ID/时间/身份/版本重放、503 保留、202 删除、TTL/容量/字节预算。没有使用真实进程强杀来替代这些测试。
+
+本地 Java 直接下载 Robolectric 运行时出现 TLS/慢下载问题；通过 Maven Central 下载官方 Android 9/14 instrumented JAR 并核对 SHA-512，再用临时 Gradle init script 指向 /tmp 中的运行时执行测试。该本机路径未进入仓库配置；CI 默认从 Maven Central 获取运行时。
+
+可重复命令：在 android/ 执行 `./gradlew testDebugUnitTest lint assembleRelease publishToMavenLocal`，随后在 examples/android/ 执行 `../../android/gradlew :app:assembleDebug :app:assembleDebugAndroidTest`。本机运行测试时增加临时 `-I /tmp/ea-robolectric.init.gradle`。构建使用 JDK 21，Java 8 target 的弃用提示来自 JDK，不改变最低 API 26。
+
+边界：本轮 adb devices 无设备；API 26 实机/模拟器运行、真实 ColorOS 等厂商固件名称版本、进程真实崩溃后重启、Release 混淆还原、远程 CI/签名发布、生产 Worker 链路均未在本轮验证。厂商属性规则是尽力识别，失败/冲突回退 Android。下方为历史验证记录，不应视为 0.2.0 的设备或生产验证。
+
 日期：2026-09-15。JavaScript 0.1.0 已发布到 npmjs.com；Android 尚未发布到 Maven Central，也未推送 Git。
 
 ## 已完成

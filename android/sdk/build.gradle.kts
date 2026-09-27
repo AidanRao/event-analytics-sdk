@@ -11,9 +11,12 @@ android {
     defaultConfig { minSdk = 26; consumerProguardFiles("consumer-rules.pro") }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_1_8; targetCompatibility = JavaVersion.VERSION_1_8 }
     kotlinOptions { jvmTarget = "1.8" }
-    testOptions { unitTests.all { it.systemProperty("fixtures", rootProject.file("../spec/fixtures").absolutePath) } }
+    testOptions { unitTests.isIncludeAndroidResources = true; unitTests.all { it.systemProperty("robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2") }; unitTests.all { it.systemProperty("fixtures", rootProject.file("../spec/fixtures").absolutePath) } }
 }
 dependencies {
+    implementation("androidx.lifecycle:lifecycle-process:2.6.2")
+    testImplementation("org.robolectric:robolectric:4.12.2")
+    testImplementation("androidx.test:core:1.5.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.google.code.gson:gson:2.10.1")
     testImplementation("junit:junit:4.13.2")
@@ -26,7 +29,7 @@ mavenPublishing {
     if (providers.environmentVariable("ORG_GRADLE_PROJECT_signingInMemoryKey").isPresent) signAllPublications()
     pom {
         name.set("Event Analytics Android SDK")
-        description.set("Manual event ingestion SDK supporting Event Analytics protocol v1")
+        description.set("Event ingestion and opt-in automatic Android tracking supporting Event Analytics protocol v1")
         url.set("https://github.com/AidanRao/event-analytics-sdk")
         licenses { license { name.set("MIT License"); url.set("https://opensource.org/licenses/MIT") } }
         developers { developer { id.set("AidanRao"); name.set("AidanRao"); url.set("https://aidanrao.top") } }

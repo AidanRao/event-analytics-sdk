@@ -21,7 +21,7 @@ jobs:
           # Override the default list, which includes the unavailable legacy tools package.
           packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
       - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew :sdk:testDebugUnitTest :sdk:lint :sdk:assembleRelease :sdk:publishToMavenLocal
+      - run: ./gradlew testDebugUnitTest lint assembleRelease publishToMavenLocal
         working-directory: android
       - run: ../../android/gradlew :app:assembleDebug :app:assembleDebugAndroidTest -PsdkVersion="$(sed -n 's/^VERSION_NAME=//p' ../../android/gradle.properties)"
         working-directory: examples/android
@@ -45,6 +45,6 @@ jobs:
         with:
           name: android-artifacts
           path: |
-            android/sdk/build/outputs/aar/
-            android/sdk/build/reports/
+            android/*/build/outputs/aar/
+            android/*/build/reports/
             examples/android/app/build/reports/

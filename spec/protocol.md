@@ -39,7 +39,7 @@ SDK 使用上述结构计算 UTF-8 字节数，将两个时间都代入 90071992
 ## 队列、快照与重试
 
 - track 生成 UUID 和发生时间，保存事件/身份/上下文快照，返回 event ID。非法输入或满队列同步抛出错误并报告；已关闭实例拒绝调用。
-- appId 固定；setIdentity 整体替换，空对象清除身份；setContext 合并 patch，保留其他字段。仅新事件采用新值。
+- appId 固定；setIdentity 整体替换，空对象清除身份；setContext 合并 patch，保留其他字段。仅新事件采用新值。Android 系统探测的异步默认值和 os_name/os_version 配对覆盖规则见自动采集扩展文档。
 - 仅相邻、相同 context 和 identity 快照的事件合批。入队顺序不因重试或身份变化而重排；实例内至多一个 HTTP 请求在途。
 - 默认容量 1000，包括发送中条目；每 10000ms 或累计 20 条触发排空。满队列拒绝新事件，保留已有队列。
 - 网络错误、超时、429 和 5xx 最多额外重试 3 次。请求默认超时 10000ms；退避为 `min(60000, retryBaseMs * 2^attempt) * U[0.5,1)`，默认 retryBaseMs=1000。
@@ -47,7 +47,7 @@ SDK 使用上述结构计算 UTF-8 字节数，将两个时间都代入 90071992
 - 其余状态立即终止该批；重试耗尽也终止。终止批次移出队列并回调 reason、eventIds、可选 status/code，不自动记录载荷。回调异常不能破坏队列。
 - flush 捕获调用时待完成事件并触发发送，等待这些事件确认或终止失败，返回 accepted/failed 数量；后加入事件不影响该次等待。并发 flush 可以统计同一批事件。
 - close 幂等，停止接收与周期定时器，flush 后释放资源；默认 15000ms 截止。截止时取消请求/退避、终止剩余条目。期间的 flush 同样会完成。
-- 汇总中的 accepted 只表示收到 202；终止失败不代表服务端一定未收到。无持久化、重启补发或 exactly-once 承诺。
+- 汇总中的 accepted 只表示收到 202；终止失败不代表服务端一定未收到。普通事件无持久化或重启补发；Android 可选 crash 持久化补报见 [Android 自动采集](android-auto-tracking.md)。均不承诺 exactly-once。
 
 ## 配置边界
 

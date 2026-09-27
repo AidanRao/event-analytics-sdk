@@ -1,14 +1,14 @@
 # Event Analytics SDK
 
-浏览器 JavaScript 与 Android 的手动事件采集 SDK。协议放在 `spec/`，语言实现独立构建、版本与发布。
+浏览器 JavaScript 手动采集与 Android 手动/可选自动采集 SDK。协议放在 `spec/`，语言实现独立构建、版本与发布。
 
-| 实现 | 包 | 初始版本 | 协议 |
+| 实现 | 包 | 版本 | 协议 |
 | --- | --- | --- | --- |
 | [JavaScript](javascript/README.md) | `@aidanrao/event-analytics` | 0.1.0 | v1 |
-| [Android](android/README.md) | `top.aidanrao:event-analytics` | 0.1.0 | v1 |
+| [Android](android/README.md) | `top.aidanrao:event-analytics` | 0.2.0 | v1 |
 | Go | 预留，尚未实现 | — | — |
 
-SDK 只提供手动埋点，不自动采集页面、会话、用户或设备 ID。队列仅在内存中存活；进程或页面关闭可能丢失事件。上报端点必须显式配置。
+JavaScript 提供手动埋点；Android 0.2.0 可显式开启生命周期、页面和 JVM crash 采集，并默认补充系统/设备信息。SDK 不自动生成用户或设备 ID。普通事件队列仅在内存中存活；Android crash 使用有界持久化补报。上报端点必须显式配置。
 
 ## 结构
 
@@ -28,7 +28,7 @@ npm run typecheck
 npm test
 npm pack
 cd ../android
-./gradlew :sdk:testDebugUnitTest :sdk:lint :sdk:assembleRelease :sdk:publishToMavenLocal
+./gradlew testDebugUnitTest lint assembleRelease publishToMavenLocal
 ```
 
 Node 22+ 用于构建测试；JS SDK 仅支持具备 ESM、fetch、AbortController、TextEncoder 和 crypto.randomUUID 的现代浏览器（HTTPS 或 localhost）。Android 构建需要 JDK 17+、Android SDK 34，运行要求 API 26+。
@@ -42,7 +42,7 @@ JS 的版本源为 `javascript/package.json`，Android 的版本源为 `android/
 发布前更新对应版本及 CHANGELOG，通过 CI 后创建对应标签：
 
 - `javascript/v0.1.0` → npm；GitHub Environment：`npm`。
-- `android/v0.1.0` → Maven Central；GitHub Environment：`maven-central`。
+- `android/v0.2.0` → Maven Central；GitHub Environment：`maven-central`。
 
 发布步骤与账号配置见各语言 README。工作流检查标签与版本文件相符。代码提交本身不触发包发布。
 

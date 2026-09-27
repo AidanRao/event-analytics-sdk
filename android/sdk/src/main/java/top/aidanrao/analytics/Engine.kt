@@ -25,13 +25,17 @@ internal data class Config(
         require(timeoutMs in 1..300_000 && maxRetries in 0..10 && retryBaseMs in 1..60_000 && closeTimeoutMs in 1..300_000)
     }
 }
-internal class Engine(private val config: Config, initialContext: JsonObject, initialIdentity: JsonObject = emptyMap()) {
-    private class Entry(val event: JsonObject, val context: JsonObject, val identity: JsonObject) {
+internal class Engine(private val config: Config, initialContext: JsonObject, initialIdentity: JsonObject = emptyMap(),
+    private val contextInitializer: (() -> JsonObject)? = null, initialOverrideKeys: Set<String> = initialContext.keys) {
+    private class Entry(val event: JsonObject, var context: JsonObject, val identity: JsonObject, val overrides: Set<String>? = null) {
         val done = CompletableFuture<Boolean>()
-        val key = Protocol.json(listOf(context, identity))
+        val key get() = Protocol.json(listOf(context, identity))
     }
     private val lock = Any()
     private var context = Protocol.context(initialContext)
+    private val overrideKeys = initialOverrideKeys.toMutableSet()
+    @Volatile private var capture = Pair(context, Protocol.obj(initialIdentity))
+    fun captureContext(): Pair<JsonObject, JsonObject> = capture
     private var identity = Protocol.obj(initialIdentity)
     private val queue = mutableListOf<Entry>()
     private var running = false
@@ -47,13 +51,28 @@ internal class Engine(private val config: Config, initialContext: JsonObject, in
         config.validate()
         client = OkHttpClient.Builder().callTimeout(config.timeoutMs, TimeUnit.MILLISECONDS)
             .followRedirects(false).followSslRedirects(false).retryOnConnectionFailure(false).build()
+        worker.execute {
+            try {
+                contextInitializer?.invoke()?.let { defaults -> synchronized(lock) {
+                    fun enriched(value: JsonObject, keys: Set<String>) = Protocol.context(value + defaults.filterKeys { it !in keys })
+                    context = enriched(context, overrideKeys)
+                    queue.forEach { entry -> entry.overrides?.let { entry.context = enriched(entry.context, it) } }
+                    capture = Pair(context, identity)
+                } }
+            } catch (_: Exception) { report(SdkError("System information unavailable", emptyList())) }
+        }
         timer = scheduler.scheduleWithFixedDelay({ start() }, config.flushIntervalMs, config.flushIntervalMs, TimeUnit.MILLISECONDS)
     }
-    fun setIdentity(value: JsonObject) = synchronized(lock) { checkOpen(); identity = Protocol.obj(value) }
+    fun setIdentity(value: JsonObject) = synchronized(lock) { checkOpen(); identity = Protocol.obj(value); capture = Pair(context, identity) }
     fun setContext(value: JsonObject) = synchronized(lock) {
         checkOpen(); val update = Protocol.obj(value)
         require(!update.containsKey("app_id") || update["app_id"] == context["app_id"]) { "app_id is fixed" }
-        context = Protocol.context(context + update)
+        val overridingOs = update.containsKey("os_name")
+        val base = if (overridingOs && !update.containsKey("os_version")) context - "os_version" else context
+        context = Protocol.context(base + update + if (overridingOs) mapOf("os_detection_source" to "host_override") else emptyMap())
+        overrideKeys.addAll(update.keys)
+        if (overridingOs) overrideKeys.addAll(setOf("os_version", "os_detection_source"))
+        capture = Pair(context, identity)
     }
     fun track(name: String, properties: JsonObject): String {
         val id = UUID.randomUUID().toString()
@@ -61,7 +80,7 @@ internal class Engine(private val config: Config, initialContext: JsonObject, in
             synchronized(lock) {
                 checkOpen(); require(queue.size < config.maxQueueSize) { "Queue is full" }
                 val event = mapOf("event_id" to id, "event_name" to name, "local_time_ms" to System.currentTimeMillis(), "properties" to Protocol.obj(properties))
-                val entry = Entry(event, Protocol.context(context), Protocol.obj(identity))
+                val entry = Entry(event, Protocol.context(context), Protocol.obj(identity), overrideKeys.toSet())
                 Protocol.validate(request(listOf(entry), System.currentTimeMillis() / 1000))
                 require(Protocol.fitsEvent(entry.context, entry.identity, event)) { "Normalized event exceeds 16000 bytes" }
                 queue.add(entry)
@@ -69,6 +88,18 @@ internal class Engine(private val config: Config, initialContext: JsonObject, in
             }
             return id
         } catch (e: IllegalArgumentException) { report(SdkError(e.message ?: "Invalid event", listOf(id))); throw e }
+    }
+    fun replay(record: CrashRecord): CompletableFuture<Boolean> = synchronized(lock) {
+        checkOpen()
+        require(record.context["app_id"] == context["app_id"])
+        queue.firstOrNull { it.event["event_id"] == record.event["event_id"] }?.let { return@synchronized it.done }
+        require(queue.size < config.maxQueueSize) { "Queue is full" }
+        val entry = Entry(Protocol.obj(record.event), Protocol.context(record.context), Protocol.obj(record.identity))
+        Protocol.validate(request(listOf(entry), System.currentTimeMillis() / 1000))
+        require(Protocol.fitsEvent(entry.context, entry.identity, entry.event))
+        queue.add(entry)
+        if (queue.size >= config.batchSize) start()
+        entry.done
     }
     fun flush(): CompletableFuture<FlushResult> {
         val pending = synchronized(lock) { queue.map { it.done } }
@@ -122,6 +153,11 @@ internal class Engine(private val config: Config, initialContext: JsonObject, in
                     selected.add(entry)
                 }
                 selected
+            }
+            if (batch.any { !Protocol.fitsEvent(it.context, it.identity, it.event) }) {
+                val oversized = batch.filter { !Protocol.fitsEvent(it.context, it.identity, it.event) }
+                finish(oversized, false, SdkError("Normalized event exceeds 16000 bytes after context enrichment", oversized.map { it.event["event_id"] as String }))
+                continue
             }
             if (batch.isEmpty()) return // A single validated normalized event always fits the HTTP budget.
             val ids = batch.map { it.event["event_id"] as String }
