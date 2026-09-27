@@ -1,6 +1,8 @@
 # Navigation page tracking
 
-Add `top.aidanrao:event-analytics-navigation` at the same version as the core SDK.
+[中文最小接入示例（含 ClassHopper）](../quickstart/compose-navigation.md)
+
+Declare only `implementation("top.aidanrao:event-analytics-navigation:0.2.0")`. It transitively includes the core SDK; initialize one Analytics instance. Do not add the Fragment adapter to the same navigation container.
 Works with AndroidX Navigation (including Navigation Compose); the adapter does not depend on Compose.
 
 ```kotlin

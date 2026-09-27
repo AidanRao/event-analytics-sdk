@@ -1,6 +1,8 @@
 # Fragment page tracking
 
-Add `top.aidanrao:event-analytics-fragment` at the same version as the core SDK.
+[中文最小接入示例](../quickstart/fragment.md)
+
+Declare only `implementation("top.aidanrao:event-analytics-fragment:0.2.0")`. It transitively includes the core SDK; initialize one Analytics instance. Apps using AndroidX Navigation should choose the Navigation adapter instead.
 
 ```kotlin
 val binding = AnalyticsFragments.bind(analytics, activity) { fragment ->

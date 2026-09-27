@@ -2,13 +2,19 @@
 
 Kotlin 实现、Java 可直接调用，最低 Android 8.0 / API 26，协议 v1，版本 0.2.0。
 
-```kotlin
-implementation("top.aidanrao:event-analytics:0.2.0")
-// 根据页面框架选择，不需要 Compose 依赖即可使用 Navigation 适配器。
-implementation("top.aidanrao:event-analytics-navigation:0.2.0")
-// 非 Navigation 的 Fragment 页面可选择：
-implementation("top.aidanrao:event-analytics-fragment:0.2.0")
-```
+## 先选你的页面框架
+
+通常只需添加表中对应的一条依赖，然后使用一个 Analytics 实例。Navigation/Fragment 制品会传递引入核心 SDK；同一页面容器只选一种适配器。
+
+| 项目页面结构 | 唯一需要声明的 SDK 依赖 | 最小接入示例 |
+| --- | --- | --- |
+| 一个 Activity 一个页面 | `top.aidanrao:event-analytics:0.2.0` | [Activity：初始化即可](quickstart/activity.md) |
+| Compose Navigation / AndroidX Navigation | `top.aidanrao:event-analytics-navigation:0.2.0` | [Navigation：根导航绑定一次](quickstart/compose-navigation.md) |
+| 未使用 Navigation 的 Fragment | `top.aidanrao:event-analytics-fragment:0.2.0` | [Fragment：宿主映射一次](quickstart/fragment.md) |
+
+**ClassHopper 选择 Navigation 示例。** 不需要再引入 Fragment 适配器，也不需要逐个修改业务页面。混合应用只有在不同容器确实分别采用不同框架时，才需要多个适配器；它们共用核心 SDK。
+
+以下是接口和行为参考；首次接入先按对应示例完成即可。
 
 ## 初始化与手动事件
 
